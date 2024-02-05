@@ -68,15 +68,15 @@ class Network:
         self.x_range = x_range
         self.y_range = y_range
         self.os_versions = self.initialize_app_versions("OS")
-        self.app1_versions = self.initialize_app_versions("APP1")
-        self.app2_versions = self.initialize_app_versions("APP2")
+        self.app1_versions = self.initialize_app_versions("APP1", 1+num_app_versions)
+        self.app2_versions = self.initialize_app_versions("APP2", 1+2*num_app_versions)
         self.computers = self.initialize_computers()
         self.netwrok = self.generate_network()
 
-    def initialize_app_versions(self, app_type: str):
+    def initialize_app_versions(self, app_type: str, start_version: int = 1):
         app_versions = []
         vulnerabilities = self.initialize_vulnerabilities(app_type)
-        for i in range(1, self.num_app_versions + 1):
+        for i in range(start_version, start_version + self.num_app_versions):
             # choose a random number of vulnerabilities for each implementation
             app_versions.append(Implementation(app_type, i, random.sample(vulnerabilities, random.randint(0, len(vulnerabilities)))))
         return app_versions
