@@ -11,12 +11,16 @@ class Implementation:
         # Implementation type, e.g., Windows, Linux, Mac for OS etc. using numbers for simplicity
         self.implementation_type = implementation_type
         self.vulnerabilities = vulnerabilities
+        print(f'The {self.implementation_type} type of {self.type} has vulnerabilities: {self.vulnerabilities}.')
 
     def set_vulnerabilities(self, vulnerabilities: list[str]):
         self.vulnerabilities = vulnerabilities
 
     def get_info(self):
         return f'{self.type} with corresponding implementation type {self.implementation_type}.'
+    
+    def get_vulnerabilities(self):
+        return self.vulnerabilities
 
 class Software:
     def __init__(self, id: int, implementation: Implementation, state: int = 1):
