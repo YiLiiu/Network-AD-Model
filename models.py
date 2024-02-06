@@ -29,6 +29,7 @@ class Software:
         self.implementation= implementation
         # Vulnerabilities (0: invulnerable, 1: vulnerable, 2: compromised)
         self.state = state
+        self.attack_phase = -1 # -1: not attacked, 0: installation, 1: discovery, 2: privilege escalation, 3: lateral movement
 
     def set_state_based_on_vulnerabilities(self):
         # If the state is already compromised, do nothing
@@ -37,8 +38,14 @@ class Software:
         # If there are vulnerabilities, set the state to 1 (vulnerable)
         self.state = 1 if len(self.implementation.vulnerabilities) > 0 else 0
 
-    def get_app_type(self):
+    def set_attack_phase(self, phase: int):
+        self.attack_phase = phase
+
+    def get_software_type(self):
         return self.implementation.type
+
+    def get_implementation_type(self):
+        return self.implementation.implementation_type
 
     def get_info(self):
         return f'{self.implementation.get_info()} with state {self.state}.'
@@ -71,7 +78,7 @@ class Network:
         self.app1_versions = self.initialize_app_versions("APP1", 1+num_app_versions)
         self.app2_versions = self.initialize_app_versions("APP2", 1+2*num_app_versions)
         self.computers = self.initialize_computers()
-        self.netwrok = self.generate_network()
+        self.graph = self.generate_graph()
 
     def initialize_app_versions(self, app_type: str, start_version: int = 1):
         app_versions = []
@@ -98,15 +105,15 @@ class Network:
             computers.append(computer)
         return computers
 
-    def generate_network(self):
+    def generate_graph(self) -> dict:
         graphs = {}
         graph1, graph2 = nx.Graph(), nx.Graph()
         for computer in self.computers:
             for app in computer.apps:
-                if app.get_app_type() == 'APP1':
-                    graph1.add_node(computer.id)
-                elif app.get_app_type() == 'APP2':
-                    graph2.add_node(computer.id)
+                if app.get_software_type() == 'APP1':
+                    graph1.add_node(app)
+                elif app.get_software_type() == 'APP2':
+                    graph2.add_node(app)
         # Connect nodes with a probability of 0.8 in the same app graph
         for user1, user2 in itertools.combinations(graph1.nodes(), 2):
             if random.random() < 0.8:
@@ -123,17 +130,40 @@ class Network:
         for computer in self.computers:
             print(f'Computer {computer.id} has OS: {computer.os.get_info()} and Apps: {[app.get_info() for app in computer.apps]}')
 
+    def get_computer(self, id: int) -> Computer:
+        for computer in self.computers:
+            if computer.id == id:
+                return computer
+        return None
+
     def get_connected_apps(self):
-        app1_graph = self.netwrok['APP1']
-        app2_graph = self.netwrok['APP2']
+        app1_graph = self.graph['APP1']
+        app2_graph = self.graph['APP2']
         connected_apps = []
         for edge in app1_graph.edges():
-            connected_apps.append(f"APP1_{edge[0]}-APP1_{edge[1]}")
+            connected_apps.append(f"APP1_{edge[0].id}-APP1_{edge[1].id}")
         for edge in app2_graph.edges():
-            connected_apps.append(f"APP2_{edge[0]}-APP2_{edge[1]}")
+            connected_apps.append(f"APP2_{edge[0].id}-APP2_{edge[1].id}")
         return connected_apps
-
-
+    
+    def get_connected_software(self, software: Software) -> list[Software]:
+        # Get the connected apps for the given app type.
+        sw_type = software.get_software_type()
+        id = software.id
+        app_graph = self.graph[sw_type]
+        connected_software = []
+        for edge in app_graph.edges():
+            if edge[0] == id:
+                connected_software.append(edge[1])
+            elif edge[1] == id:
+                connected_software.append(edge[0])
+        # Get the apps on the same computer
+        computer = self.get_computer(id)
+        for app in computer.apps:
+            if app.get_software_type() != sw_type:
+                connected_software.append(app.id)
+        return connected_software
+        
     def plot(self):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -158,14 +188,14 @@ class Network:
             
             # APPs
             for app in computer.apps:
-                z_layer = layers[app.get_app_type()]
+                z_layer = layers[app.get_software_type()]
                 app_position = (computer.x_position, computer.y_position, z_layer)
-                if app.get_app_type() == 'APP1':
+                if app.get_software_type() == 'APP1':
                     app_color = cmap_app1(app.implementation.implementation_type / num_types)
-                elif app.get_app_type() == 'APP2':
+                elif app.get_software_type() == 'APP2':
                     app_color = cmap_app2(app.implementation.implementation_type / num_types)
                 ax.scatter(*app_position[:-1], app_position[2], c=app_color, marker='^')
-                ax.text(*app_position, f'{computer.id}-{app.get_app_type()}', color='black')
+                ax.text(*app_position, f'{computer.id}-{app.get_software_type()}', color='black')
                 
                 app_positions.append(app_position)
             
@@ -174,7 +204,7 @@ class Network:
                 ax.plot([os_position[0], app_pos[0]], [os_position[1], app_pos[1]], [os_position[2], app_pos[2]], c='black')
 
         # Draw the edges
-        for app_name, graph in self.netwrok.items():
+        for app_name, graph in self.graph.items():
             z_layer = layers[app_name]
             for edge in graph.edges():
                 x_positions = [self.computers[edge[0]].x_position, self.computers[edge[1]].x_position]
@@ -187,88 +217,84 @@ class Network:
         ax.set_zlabel('Layer')
         plt.show()
 
-
-
-
-
-
 # Define the Attacker class
 class Attacker:
-    def __init__(self):
-        self.knowledge = {}  # Attacker's knowledge at each time step t
-        self.goal = {}       # Attacker's goal at each time step t
-        self.strategy = []   # Attacker's strategy phases
-        self.capability = {}  # Attacker's capabilities for each phase and exploit
-        self.decision_making = {}  # Attacker's decision-making algorithm
+    def __init__(self, network: Network):
+        self.network = network
+        # Knowledge about the network, saved as:
+        # set of software instances
+        self.knowledge = self.init_knowledge()
+        self.strategy = self.init_strategy()
 
-    def simulate_initial_knowledge(self, IniComp):
-        # Simulate attacker's initial knowledge
-        self.knowledge[0] = {
-            "G": None,       # Attacker's perception of the communication graph
-            "C": None,       # Attacker's perception of the network diversity configuration
-            "Phi": None,     # Attacker's perception of vulnerabilities
-            "S": None        # Attacker's perception of the network-wide cybersecurity state
-        }
-        # Assume attacker knows IniComp
-        self.knowledge[0]["S"] = {"Compromised Programs": IniComp}
+    def init_knowledge(self) -> set(Software):
+        # Initialize the knowledge about the network, get all the compromised nodes, record as id: 
+        knowledge = set()
+        for computer in self.network.computers:
+            if computer.os.state == 2 and computer.os.attack_phase == -1:
+                knowledge.add(computer.os)
+                computer.os.attack_phase = 0
+            for app in computer.apps:
+                if app.state == 2 and app.attack_phase == -1:
+                    knowledge.add(app)
+                    app.attack_phase = 0
+        return knowledge
 
-    def simulate_goal(self, T):
-        # Simulate attacker's goal to compromise as many programs as possible till time T
-        for t in range(T + 1):
-            self.goal[t] = {"Compromise All Programs": 1}
-
-    def simulate_strategy(self):
+    def init_strategy(self) -> dict:
         # Simulate attacker's strategy phases based on MITRE's ATT&CK
-        self.strategy = [
-            "Installation",      # Phase 1
-            "Discovery",         # Phase 2
-            "Privilege Escalation",  # Phase 3
-            "Lateral Movement",  # Phase 4
-            "Causing Damages"    # Phase 5
-        ]
-
-    def simulate_capability(self):
-        # Simulate attacker's capabilities as described
-        for phase in self.strategy:
-            self.capability[phase] = []
-            if phase == "Installation":
-                self.capability[phase].append("Remote Access Exploit")
-            elif phase == "Discovery":
-                self.capability[phase].append("Remote System Discovery Exploit")
-                self.capability[phase].append("Local System Discovery Exploit")
-            elif phase == "Privilege Escalation":
-                # Simulate multiple privilege escalation exploits
-                self.capability[phase].append("Privilege Escalation Exploit 1")
-                self.capability[phase].append("Privilege Escalation Exploit 2")
-            elif phase == "Lateral Movement":
-                # Simulate multiple lateral movement exploits
-                self.capability[phase].append("Lateral Movement Exploit 1")
-                self.capability[phase].append("Lateral Movement Exploit 2")
-            elif phase == "Causing Damages":
-                self.capability[phase].append("Damaging Exploit")
-
-    def simulate_decision_making(self):
-        # Simulate attacker's decision-making algorithm
-        # Define the decision-making algorithm as described
-        self.decision_making = {
-            "Installation": "Remote Access Exploit",
-            "Discovery": ["Remote System Discovery Exploit", "Local System Discovery Exploit"],
-            "Privilege Escalation": "Select Exploit based on Vulnerabilities",
-            "Lateral Movement": "Select Exploit based on Vulnerabilities",
-            "Causing Damages": "Damaging Exploit"
+        return {
+            -1: "No Attack",        # No attack
+            0: "Discovered",         # Phase 0
+            1: "Installation",      # Phase 1
+            2: "Discovery",         # Phase 2
+            3: "Privilege Escalation",  # Phase 3
+            4: "Lateral Movement",  # Phase 4
+            5: "Causing Damages"    # Phase 5
         }
+    
+    def installation_phase(self):
+        # Update the knowledge, for the 0 phase, the attacker installs the malware
+        for sw in self.knowledge:
+            if sw.attack_phase == 0:
+                sw.attack_phase = 1
+                sw.state = 2
 
-    def make_attack_plan(self, time):
-        # Simulate attacker's decision-making based on the current time and knowledge
-        phase = self.strategy[time % len(self.strategy)]  # Cycle through phases
-        decision = self.decision_making[phase]
-        if isinstance(decision, list):
-            # If multiple options, choose one randomly
-            import random
-            exploit_choice = random.choice(decision)
-        else:
-            exploit_choice = decision
-        return exploit_choice
+    def discovery_phase(self):
+        # Update the knowledge, for the 1 phase, the attacker discovers the network
+        for sw in self.knowledge:
+            if sw.attack_phase == 1:
+                sw.attack_phase = 2
+                # Get the connected apps
+                connected_sws = self.network.get_connected_software(sw)
+                for connected_sw in connected_sws:
+                    # If the connected software is not compromised, add it to the knowledge
+                    if connected_sw.attack_phase == -1 and connected_sw not in self.knowledge:
+                        self.knowledge.add(connected_sw)
+
+    def privilege_escalation_phase(self):
+        # Upgrade the attack phase for the discovered OS
+        for sw in self.knowledge:
+            if sw.get_software_type() != 'OS' and sw.attack_phase == 2:
+                sw.attack_phase = 3
+                connected_sws = self.network.get_connected_software(sw)
+                for connected_sw in connected_sws:
+                    if connected_sw.attack_phase == -1 and connected_sw in self.knowledge and connected_sw.get_software_type() == 'OS':
+                        connected_sw.attack_phase = 0
+
+    def lateral_movement_phase(self):
+        # Upgrade the attack phase for the discovered apps
+        for sw in self.knowledge:
+            if sw.attack_phase == 2 or sw.attack_phase == 3:
+                sw.attack_phase = 4
+                connected_sws = self.network.get_connected_software(sw)
+                for connected_sw in connected_sws:
+                    if connected_sw.attack_phase == -1 and connected_sw in self.knowledge and connected_sw.get_software_type() != 'OS':
+                        connected_sw.attack_phase = 0
+
+    def causing_damages_phase(self):
+        # Upgrade the attack phase for the phase 4
+        for sw in self.knowledge:
+            if sw.attack_phase == 4:
+                sw.attack_phase = 5
 
 # Define the Defender class
 class Defender:
