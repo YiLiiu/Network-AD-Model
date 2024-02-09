@@ -115,12 +115,12 @@ class Network:
                 elif app.get_software_type() == 'APP2':
                     graph2.add_node(app)
         # Connect nodes with a probability of 0.8 in the same app graph
-        for user1, user2 in itertools.combinations(graph1.nodes(), 2):
+        for application1, application2 in itertools.combinations(graph1.nodes(), 2):
             if random.random() < 0.8:
-                graph1.add_edge(user1, user2)
-        for user1, user2 in itertools.combinations(graph2.nodes(), 2):
+                graph1.add_edge(application1, application2)
+        for application1, application2 in itertools.combinations(graph2.nodes(), 2):
             if random.random() < 0.8:
-                graph2.add_edge(user1, user2)
+                graph2.add_edge(application1, application2)
         graphs['APP1'] = graph1
         graphs['APP2'] = graph2
         return graphs
@@ -207,8 +207,8 @@ class Network:
         for app_name, graph in self.graph.items():
             z_layer = layers[app_name]
             for edge in graph.edges():
-                x_positions = [self.computers[edge[0]].x_position, self.computers[edge[1]].x_position]
-                y_positions = [self.computers[edge[0]].y_position, self.computers[edge[1]].y_position]
+                x_positions = [self.computers[edge[0].id].x_position, self.computers[edge[1].id].x_position]
+                y_positions = [self.computers[edge[0].id].y_position, self.computers[edge[1].id].y_position]
                 z_positions = [z_layer, z_layer]
                 ax.plot(x_positions, y_positions, z_positions, c='black')
         
@@ -226,7 +226,7 @@ class Attacker:
         self.knowledge = self.init_knowledge()
         self.strategy = self.init_strategy()
 
-    def init_knowledge(self) -> set(Software):
+    def init_knowledge(self) -> set[Software]:
         # Initialize the knowledge about the network, get all the compromised nodes, record as id: 
         knowledge = set()
         for computer in self.network.computers:
