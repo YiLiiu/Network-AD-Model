@@ -9,7 +9,12 @@ net.print_diversity_configurations()
 
 print(net.get_connected_apps())
 
+print(f"VC: {net.vc}")
+print(f"CC: {net.cc}")
+print(f"IC: {net.ic}")
+
 net.plot()
+
 
 # Set compromised apps and os
 # net.computers[0].os.

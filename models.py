@@ -30,13 +30,20 @@ class Implementation:
         return self.vuls
 
 class Software:
-    def __init__(self, id: int, implementation: Implementation, state: int = 1):
+    def __init__(self, id: int, implementation: Implementation):
         # Unique identifier
         self.id = id
         self.implementation= implementation
-        # Vulnerabilities (0: invulnerable, 1: vulnerable, 2: compromised)
-        self.state = state
+        # Vulnerabilities (0: vulnerable, 1: compromised, 2: not vulnerable)
+        self.state = self.cal_state()
         self.attack_phase = -1 # -1: not attacked, 0: installation, 1: discovery, 2: privilege escalation, 3: lateral movement
+
+    def cal_state(self):
+        # Calculate the state based on the vulnerabilities
+        if 1 in self.implementation.vuls:
+            # If there are vulnerabilities, at least vulnerable, also have 1/4 chance to be compromised
+            return 1 if random.random() < 0.25 else 0
+        return 2
 
     def set_state_based_on_vulnerabilities(self):
         # If the state is already compromised, do nothing
@@ -58,22 +65,32 @@ class Software:
         return f'{self.implementation.get_info()} with state {self.state}.'
 
 class OperatingSystem(Software):
-    def __init__(self, id: int, implementation: Implementation, state: int):
-        super().__init__(id, implementation, state)
+    def __init__(self, id: int, implementation: Implementation):
+        super().__init__(id, implementation)
 
 
 class Application(Software):
-    def __init__(self, id: int, implementation: Implementation, state: int):
-        super().__init__(id, implementation, state)
+    def __init__(self, id: int, implementation: Implementation):
+        super().__init__(id, implementation)
 
 class Computer:
     def __init__(self, id: int, os: OperatingSystem, apps: list[Application], x_position, y_position):
         self.id = id
         self.os = os
         self.apps = apps
+        self.state = self.cal_state()
         # Position in the network, used for visualization
         self.x_position = x_position
         self.y_position = y_position
+
+    def cal_state(self):
+        # Calculate the state based on the os and apps states
+        # If any of the os or apps is compromised, the computer is compromised
+        # If any of the os or apps is vulnerable and none is compromised, the computer is vulnerable
+        state = self.os.state
+        for app in self.apps:
+            state = max(state, app.state)
+        return state
 
 class Network:
     def __init__(self, num_computers: int, num_app_versions: int, x_range, y_range):
@@ -87,6 +104,9 @@ class Network:
         self.app2_versions = self.initialize_sw_versions("APP2", 1+2*num_app_versions)
         self.computers = self.initialize_computers()
         self.graph = self.generate_graph()
+        self.vc = self.calculate_vc()
+        self.cc = self.calculate_cc()
+        self.ic = self.calculate_ic()
 
     def initialize_sw_versions(self, sw_type: str, start_version: int = 1):
         sw_versions = []
@@ -110,13 +130,13 @@ class Network:
     def initialize_computers(self) -> list[Computer]:
         computers = []
         for i in range(self.num_computers):
-            os = OperatingSystem(i, random.choice(self.os_versions), 1)
+            os = OperatingSystem(i, random.choice(self.os_versions))
             # Randomly create applications for each computer
             apps = []
             if random.random() < 0.8:
-                apps.append(Application(i, random.choice(self.app1_versions), 1))
+                apps.append(Application(i, random.choice(self.app1_versions)))
             if random.random() < 0.6 or len(apps) == 0:
-                apps.append(Application(i, random.choice(self.app2_versions), 1))
+                apps.append(Application(i, random.choice(self.app2_versions)))
             computer = Computer(i, os, apps, random.uniform(self.x_range[0], self.x_range[1]), random.uniform(self.y_range[0], self.y_range[1]))
             computers.append(computer)
         return computers
@@ -179,6 +199,30 @@ class Network:
             if app.get_software_type() != sw_type:
                 connected_software.append(app.id)
         return connected_software
+    
+    def calculate_vc(self):
+        # Calculate the vulnerability coverage
+        vc = 0
+        for computer in self.computers:
+            if computer.state == 0:
+                vc += 1
+        return vc / self.num_computers
+    
+    def calculate_cc(self):
+        # Calculate the connectivity coverage
+        cc = 0
+        for computer in self.computers:
+            if computer.state == 1:
+                cc += 1
+        return cc / self.num_computers
+    
+    def calculate_ic(self):
+        # Calculate the integrity coverage
+        ic = 0
+        for computer in self.computers:
+            if computer.state == 2:
+                ic += 1
+        return ic / self.num_computers
         
     def plot(self):
         fig = plt.figure()
