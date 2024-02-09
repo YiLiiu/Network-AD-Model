@@ -11,7 +11,7 @@ class Implementation:
         # Implementation type, e.g., Windows, Linux, Mac for OS etc. using numbers for simplicity
         self.implementation_type = implementation_type
         self.vuls = self.generate_vuls(vulnerabilities, num_vuls)
-        print(f'The {self.implementation_type} type of {self.type} has vulnerabilities: {self.vuls}.')
+        print(f'Implementation {self.implementation_type}: {self.vuls}')
 
     def generate_vuls(self, vulnerabilities: list[int], num_vuls: int):
         # vuls is a list 0 and 1 where 0 means no vulnerability and 1 means vulnerability
@@ -24,7 +24,7 @@ class Implementation:
         self.vuls = vulnerabilities
 
     def get_info(self):
-        return f'{self.type} with corresponding implementation type {self.implementation_type}.'
+        return f'{self.type} with implementation {self.implementation_type}'
     
     def get_vulnerabilities(self):
         return self.vuls
@@ -62,7 +62,7 @@ class Software:
         return self.implementation.implementation_type
 
     def get_info(self):
-        return f'{self.implementation.get_info()} with state {self.state}.'
+        return f'{self.implementation.get_info()}.'
 
 class OperatingSystem(Software):
     def __init__(self, id: int, implementation: Implementation):
@@ -164,7 +164,21 @@ class Network:
     def print_diversity_configurations(self):
         # Print the diversity configurations for each computer
         for computer in self.computers:
-            print(f'Computer {computer.id} has OS: {computer.os.get_info()} and Apps: {[app.get_info() for app in computer.apps]}')
+            print(f'OS{computer.id}: implementation{computer.os.implementation.implementation_type}')
+            for app in computer.apps:
+                print(f'{app.get_software_type()}{app.id}: implementation{app.implementation.implementation_type}')
+
+    def print_st(self):
+        # Print the state of the network
+        for computer in self.computers:
+            print(f'OS{computer.id}: St={computer.os.state}')
+            for app in computer.apps:
+                print(f'{app.get_software_type()}{app.id}: St={app.state}')
+
+    def print_spt(self):
+        # Print the state of the network
+        for computer in self.computers:
+            print(f'Computer{computer.id}: S\'t={computer.state}')
 
     def get_computer(self, id: int) -> Computer:
         for computer in self.computers:

@@ -6,6 +6,8 @@ net = Network(5,3,[0, 10],[0,10])
 t_range = [0,10]
 
 net.print_diversity_configurations()
+net.print_st()
+net.print_spt()
 
 print(net.get_connected_apps())
 
