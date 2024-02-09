@@ -5,22 +5,29 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 class Implementation:
-    def __init__(self, type: str, implementation_type: int, vulnerabilities: list[str] = []):
+    def __init__(self, type: str, implementation_type: int, num_vuls: int, vulnerabilities: list[int] = []):
         # Software type (OS, App1, App2, etc.)
         self.type = type
         # Implementation type, e.g., Windows, Linux, Mac for OS etc. using numbers for simplicity
         self.implementation_type = implementation_type
-        self.vulnerabilities = vulnerabilities
-        print(f'The {self.implementation_type} type of {self.type} has vulnerabilities: {self.vulnerabilities}.')
+        self.vuls = self.generate_vuls(vulnerabilities, num_vuls)
+        print(f'The {self.implementation_type} type of {self.type} has vulnerabilities: {self.vuls}.')
 
-    def set_vulnerabilities(self, vulnerabilities: list[str]):
-        self.vulnerabilities = vulnerabilities
+    def generate_vuls(self, vulnerabilities: list[int], num_vuls: int):
+        # vuls is a list 0 and 1 where 0 means no vulnerability and 1 means vulnerability
+        vuls = [0] * num_vuls
+        for vul in vulnerabilities:
+            vuls[vul] = 1
+        return vuls        
+
+    def set_vulnerabilities(self, vulnerabilities: list[int]):
+        self.vuls = vulnerabilities
 
     def get_info(self):
         return f'{self.type} with corresponding implementation type {self.implementation_type}.'
     
     def get_vulnerabilities(self):
-        return self.vulnerabilities
+        return self.vuls
 
 class Software:
     def __init__(self, id: int, implementation: Implementation, state: int = 1):
@@ -36,7 +43,7 @@ class Software:
         if self.state == 2:
             return
         # If there are vulnerabilities, set the state to 1 (vulnerable)
-        self.state = 1 if len(self.implementation.vulnerabilities) > 0 else 0
+        self.state = 1 if len(self.implementation.vuls) > 0 else 0
 
     def set_attack_phase(self, phase: int):
         self.attack_phase = phase
@@ -74,22 +81,31 @@ class Network:
         self.num_app_versions = num_app_versions
         self.x_range = x_range
         self.y_range = y_range
-        self.os_versions = self.initialize_app_versions("OS")
-        self.app1_versions = self.initialize_app_versions("APP1", 1+num_app_versions)
-        self.app2_versions = self.initialize_app_versions("APP2", 1+2*num_app_versions)
+        self.os_versions = self.initialize_sw_versions("OS")
+        self.vulnerabilities = self.initialize_vulnerabilities(["OS", "APP1", "APP2"])
+        self.app1_versions = self.initialize_sw_versions("APP1", 1+num_app_versions)
+        self.app2_versions = self.initialize_sw_versions("APP2", 1+2*num_app_versions)
         self.computers = self.initialize_computers()
         self.graph = self.generate_graph()
 
-    def initialize_app_versions(self, app_type: str, start_version: int = 1):
-        app_versions = []
-        vulnerabilities = self.initialize_vulnerabilities(app_type)
+    def initialize_sw_versions(self, sw_type: str, start_version: int = 1):
+        sw_versions = []
         for i in range(start_version, start_version + self.num_app_versions):
             # choose a random number of vulnerabilities for each implementation
-            app_versions.append(Implementation(app_type, i, random.sample(vulnerabilities, random.randint(0, len(vulnerabilities)))))
-        return app_versions
+            if sw_type == "OS":
+                vulnerabilities_range = range(0, 5)
+            elif sw_type == "APP1":
+                vulnerabilities_range = range(5, 10)
+            elif sw_type == "APP2":
+                vulnerabilities_range = range(10, 15)
+            sw_versions.append(Implementation(sw_type, i, 15, random.sample(vulnerabilities_range, random.randint(0, len(vulnerabilities_range)))))
+        return sw_versions
     
-    def initialize_vulnerabilities(self, app_type: str):
-        return [f'{app_type}-VUL-{i}' for i in range(1, 6)]
+    def initialize_vulnerabilities(self, app_types: list[str]):
+        vulnerabilities = []
+        for app_type in app_types:
+            vulnerabilities.extend(f'{app_type}-VUL-{i}' for i in range(1, 6))
+        return vulnerabilities
 
     def initialize_computers(self) -> list[Computer]:
         computers = []
