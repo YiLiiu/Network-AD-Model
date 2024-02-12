@@ -35,10 +35,10 @@ class Software:
         self.id = id
         self.implementation= implementation
         # Vulnerabilities (0: vulnerable, 1: compromised, 2: not vulnerable)
-        self.state = self.cal_state()
+        self.state = self.init_state()
         self.attack_phase = -1 # -1: not attacked, 0: installation, 1: discovery, 2: privilege escalation, 3: lateral movement
 
-    def cal_state(self):
+    def init_state(self):
         # Calculate the state based on the vulnerabilities
         if 1 in self.implementation.vuls:
             # If there are vulnerabilities, at least vulnerable, also have 1/4 chance to be compromised
@@ -62,7 +62,7 @@ class Software:
         return self.implementation.implementation_type
 
     def get_info(self):
-        return f'{self.implementation.get_info()}.'
+        return f'{self.implementation.type}_{self.id}'
 
 class OperatingSystem(Software):
     def __init__(self, id: int, implementation: Implementation):
@@ -78,19 +78,20 @@ class Computer:
         self.id = id
         self.os = os
         self.apps = apps
-        self.state = self.cal_state()
+        self.update_state()
         # Position in the network, used for visualization
         self.x_position = x_position
         self.y_position = y_position
 
-    def cal_state(self):
+    def update_state(self):
         # Calculate the state based on the os and apps states
         # If any of the os or apps is compromised, the computer is compromised
         # If any of the os or apps is vulnerable and none is compromised, the computer is vulnerable
         state = self.os.state
         for app in self.apps:
             state = max(state, app.state)
-        return state
+        self.state = state
+        return
 
 class Network:
     def __init__(self, num_computers: int, num_app_versions: int, x_range, y_range):
@@ -104,9 +105,9 @@ class Network:
         self.app2_versions = self.initialize_sw_versions("APP2", 1+2*num_app_versions)
         self.computers = self.initialize_computers()
         self.graph = self.generate_graph()
-        self.vc = self.calculate_vc()
-        self.cc = self.calculate_cc()
-        self.ic = self.calculate_ic()
+        self.update_cc()
+        self.update_vc()
+        self.update_ic()
 
     def initialize_sw_versions(self, sw_type: str, start_version: int = 1):
         sw_versions = []
@@ -200,43 +201,59 @@ class Network:
         # Get the connected apps for the given app type.
         sw_type = software.get_software_type()
         id = software.id
-        app_graph = self.graph[sw_type]
         connected_software = []
+        # Get the apps on the same computer
+        computer = self.get_computer(id)
+        for app in computer.apps:
+            if app.get_software_type() != sw_type:
+                connected_software.append(app)
+        if sw_type == 'OS':
+            return connected_software
+        app_graph = self.graph[sw_type]
         for edge in app_graph.edges():
             if edge[0] == id:
                 connected_software.append(edge[1])
             elif edge[1] == id:
                 connected_software.append(edge[0])
-        # Get the apps on the same computer
-        computer = self.get_computer(id)
-        for app in computer.apps:
-            if app.get_software_type() != sw_type:
-                connected_software.append(app.id)
         return connected_software
     
-    def calculate_vc(self):
+    def update_vc(self):
         # Calculate the vulnerability coverage
         vc = 0
         for computer in self.computers:
             if computer.state == 0:
                 vc += 1
-        return vc / self.num_computers
+        self.vc = vc / self.num_computers
+        return
     
-    def calculate_cc(self):
+    def update_cc(self):
         # Calculate the connectivity coverage
         cc = 0
         for computer in self.computers:
             if computer.state == 1:
                 cc += 1
-        return cc / self.num_computers
+        self.cc = cc / self.num_computers
+        return
     
-    def calculate_ic(self):
+    def update_ic(self):
         # Calculate the integrity coverage
         ic = 0
         for computer in self.computers:
             if computer.state == 2:
                 ic += 1
-        return ic / self.num_computers
+        self.ic = ic / self.num_computers
+        return
+    
+    def get_compromised_softwares(self) -> list[Software]:
+        # Get the compromised software
+        compromised_software = []
+        for computer in self.computers:
+            if computer.os.state == 1:
+                compromised_software.append(computer.os)
+            for app in computer.apps:
+                if app.state == 1:
+                    compromised_software.append(app)
+        return compromised_software
         
     def plot(self):
         fig = plt.figure()
@@ -330,10 +347,11 @@ class Attacker:
         for sw in self.knowledge:
             if sw.attack_phase == 0:
                 sw.attack_phase = 1
-                sw.state = 2
+                sw.state = 1
 
     def discovery_phase(self):
         # Update the knowledge, for the 1 phase, the attacker discovers the network
+        discovered_sws = set()
         for sw in self.knowledge:
             if sw.attack_phase == 1:
                 sw.attack_phase = 2
@@ -341,8 +359,9 @@ class Attacker:
                 connected_sws = self.network.get_connected_software(sw)
                 for connected_sw in connected_sws:
                     # If the connected software is not compromised, add it to the knowledge
-                    if connected_sw.attack_phase == -1 and connected_sw not in self.knowledge:
-                        self.knowledge.add(connected_sw)
+                    if connected_sw.attack_phase == -1 and connected_sw not in self.knowledge and connected_sw.state != 2:
+                        discovered_sws.add(connected_sw)
+        self.knowledge.update(discovered_sws)
 
     def privilege_escalation_phase(self):
         # Upgrade the attack phase for the discovered OS
@@ -369,6 +388,19 @@ class Attacker:
         for sw in self.knowledge:
             if sw.attack_phase == 4:
                 sw.attack_phase = 5
+
+    def simulate_attack(self):
+        # Simulate the attacker's strategy
+        self.installation_phase()
+        self.discovery_phase()
+        self.privilege_escalation_phase()
+        self.lateral_movement_phase()
+        self.causing_damages_phase()
+        for computer in self.network.computers:
+            computer.update_state()
+        self.network.update_cc()
+        self.network.update_vc()
+        self.network.update_ic()
 
 # Define the Defender class
 class Defender:
