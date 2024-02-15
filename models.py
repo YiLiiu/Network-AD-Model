@@ -63,6 +63,10 @@ class Software:
 
     def get_info(self):
         return f'{self.implementation.type}_{self.id}'
+    
+    def update_implementation(self, implementation: Implementation):
+        self.implementation = implementation
+        self.set_state_based_on_vulnerabilities()
 
 class OperatingSystem(Software):
     def __init__(self, id: int, implementation: Implementation):
@@ -88,7 +92,13 @@ class Computer:
         # If any of the os or apps is compromised, the computer is compromised
         # If any of the os or apps is vulnerable and none is compromised, the computer is vulnerable
         state = self.os.state
+        if state == 1:
+            self.state = 1
+            return
         for app in self.apps:
+            if app.state == 1:
+                state = 1
+                break
             state = max(state, app.state)
         self.state = state
         return
@@ -316,6 +326,7 @@ class Attacker:
         # set of software instances
         self.knowledge = self.init_knowledge()
         self.strategy = self.init_strategy()
+        self.t = 0
 
     def init_knowledge(self) -> set[Software]:
         # Initialize the knowledge about the network, get all the compromised nodes, record as id: 
@@ -389,36 +400,65 @@ class Attacker:
             if sw.attack_phase == 4:
                 sw.attack_phase = 5
 
-    def simulate_attack(self):
-        # Simulate the attacker's strategy
-        self.installation_phase()
-        self.discovery_phase()
-        self.privilege_escalation_phase()
-        self.lateral_movement_phase()
-        self.causing_damages_phase()
+    def update_state(self):
         for computer in self.network.computers:
             computer.update_state()
         self.network.update_cc()
         self.network.update_vc()
         self.network.update_ic()
 
+    def attack(self):
+        attack_choice = self.t % 5
+        if attack_choice == 0:
+            self.installation_phase()
+        elif attack_choice == 1:
+            self.discovery_phase()
+        elif attack_choice == 2:
+            self.privilege_escalation_phase()
+        elif attack_choice == 3:
+            self.lateral_movement_phase()
+        elif attack_choice == 4:
+            self.causing_damages_phase()
+        self.t += 1
+        self.update_state()
+
 # Define the Defender class
 class Defender:
-    def __init__(self):
-        self.knowledge = {}
+    def __init__(self, network: Network, strategy: str, algorithm: str):
+        self.network = network
+        # Strategy: "Static" or "Proactive" or "Reactive"
+        self.strategy = strategy
+        # Function to update the software implementation
+        self.algorithm = self.init_algorithm(algorithm)
+        self.t = 0
 
-    def observe(self, network):
-        # Collect data about the network
+    def init_algorithm(self, algorithm: str):
+        if algorithm.lower() == "random":
+            return self.random_algorithm
+        elif algorithm.lower == "colorflipping":
+            return self.color_flipping_algorithm
+
+    def random_algorithm(self, proportion: float):
+        # Randomly select a proportion of the software redefine the implementation
+        for computer in self.network.computers:
+            if random.random() < proportion:
+                computer.os.update_implementation(random.choice(self.network.os_versions))
+                for app in computer.apps:
+                    app.update_implementation(random.choice(self.network.app1_versions) if app.get_software_type() == 'APP1' else random.choice(self.network.app2_versions))
+    
+    def color_flipping_algorithm(self, proportion: float):
         pass
 
-    def orient(self):
-        # Analyze the collected data
-        pass
+    def defend(self):
+        if self.strategy.lower() == "static":
+            if self.t == 0:
+                # Randomly select a proportion of the software and redefine the implementation
+                self.algorithm(1)
+        elif self.strategy.lower() == "proactive":
+            # Every 5 time steps, randomly select a proportion of the software and redefine the implementation
+            if self.t % 5 == 0:
+                self.algorithm(0.5)
+        elif self.strategy.lower() == "reactive":
+            pass
+        self.t += 1
 
-    def decide(self):
-        # Make a decision based on analysis
-        pass
-
-    def act(self, network):
-        # Execute the decision
-        pass

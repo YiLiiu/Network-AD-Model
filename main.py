@@ -23,8 +23,11 @@ for sw in compromised_sws:
     print(sw.get_info())
 
 attacker = Attacker(net)
-for i in range(5):
-    attacker.simulate_attack()
+defender = Defender(net, "Static", "Random")
+t = 10
+for i in range(t):
+    attacker.attack()
+    defender.defend()
 
 compromised_sws = net.get_compromised_softwares()
 print("Compromised SWs after attack:")
