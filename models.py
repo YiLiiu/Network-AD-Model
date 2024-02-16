@@ -219,6 +219,7 @@ class Network:
                 connected_software.append(app)
         if sw_type == 'OS':
             return connected_software
+        connected_software.append(computer.os)
         app_graph = self.graph[sw_type]
         for edge in app_graph.edges():
             if edge[0] == id:
