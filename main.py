@@ -29,14 +29,14 @@ for i in range(t):
     attacker.attack()
     defender.defend()
 
-compromised_sws = net.get_compromised_softwares()
-print("Compromised SWs after attack:")
-for sw in compromised_sws:
-   print(sw.get_info())
+    compromised_sws = net.get_compromised_softwares()
+    print(f"Compromised SWs at t={i+1}:")
+    for sw in compromised_sws:
+        print(sw.get_info())
 
-print(f"VC: {net.vc}")
-print(f"CC: {net.cc}")
-print(f"IC: {net.ic}")
+    print(f"VC: {net.vc}")
+    print(f"CC: {net.cc}")
+    print(f"IC: {net.ic}")
 
 # Set compromised apps and os
 # net.computers[0].os.

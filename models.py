@@ -47,10 +47,10 @@ class Software:
 
     def set_state_based_on_vulnerabilities(self):
         # If the state is already compromised, do nothing
-        if self.state == 2:
+        if self.state == 1:
             return
-        # If there are vulnerabilities, set the state to 1 (vulnerable)
-        self.state = 1 if len(self.implementation.vuls) > 0 else 0
+        # If there are vulnerabilities, set the state to 0 (vulnerable)
+        self.state = 0 if len(self.implementation.vuls) > 0 else 2
 
     def set_attack_phase(self, phase: int):
         self.attack_phase = phase
@@ -99,7 +99,7 @@ class Computer:
             if app.state == 1:
                 state = 1
                 break
-            state = max(state, app.state)
+            state = min(state, app.state)
         self.state = state
         return
 
@@ -332,11 +332,11 @@ class Attacker:
         # Initialize the knowledge about the network, get all the compromised nodes, record as id: 
         knowledge = set()
         for computer in self.network.computers:
-            if computer.os.state == 2 and computer.os.attack_phase == -1:
+            if computer.os.state == 1 and computer.os.attack_phase == -1:
                 knowledge.add(computer.os)
                 computer.os.attack_phase = 0
             for app in computer.apps:
-                if app.state == 2 and app.attack_phase == -1:
+                if app.state == 1 and app.attack_phase == -1:
                     knowledge.add(app)
                     app.attack_phase = 0
         return knowledge
