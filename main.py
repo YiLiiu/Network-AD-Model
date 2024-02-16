@@ -17,6 +17,11 @@ print(f"IC: {net.ic}")
 
 # net.plot()
 
+print("Invulnerable SWs:")
+invulnerable_sws = net.get_invulnerable_softwares()
+for sw in invulnerable_sws:
+    print(sw.get_info())
+
 print("Compromised SWs before attack:")
 compromised_sws = net.get_compromised_softwares()
 for sw in compromised_sws:

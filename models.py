@@ -265,6 +265,17 @@ class Network:
                     compromised_software.append(app)
         return compromised_software
         
+    def get_invulnerable_softwares(self) -> list[Software]:
+        # Get the invulnerable software
+        invulnerable_software = []
+        for computer in self.computers:
+            if computer.os.state == 2:
+                invulnerable_software.append(computer.os)
+            for app in computer.apps:
+                if app.state == 2:
+                    invulnerable_software.append(app)
+        return invulnerable_software
+
     def plot(self):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -453,7 +464,8 @@ class Defender:
         if self.strategy.lower() == "static":
             if self.t == 0:
                 # Randomly select a proportion of the software and redefine the implementation
-                self.algorithm(1)
+                # self.algorithm(1)
+                pass
         elif self.strategy.lower() == "proactive":
             # Every 5 time steps, randomly select a proportion of the software and redefine the implementation
             if self.t % 5 == 0:
