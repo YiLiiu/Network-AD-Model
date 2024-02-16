@@ -222,9 +222,9 @@ class Network:
         connected_software.append(computer.os)
         app_graph = self.graph[sw_type]
         for edge in app_graph.edges():
-            if edge[0] == id:
+            if edge[0] == software:
                 connected_software.append(edge[1])
-            elif edge[1] == id:
+            elif edge[1] == software:
                 connected_software.append(edge[0])
         return connected_software
     
