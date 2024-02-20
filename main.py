@@ -43,8 +43,8 @@ for t in range(time_steps):
         break
     while tau_index < len(taus) and net.cc >= taus[tau_index]:
         tts_list.append(t)
+        print(f"For tau={taus[tau_index]}, the time to compromise is {t}, CC is {net.cc}")
         tau_index += 1
-        print(f"At time {t}, VC: {net.vc}, CC: {net.cc}, IC: {net.ic}")
 
     # compromised_sws = net.get_compromised_softwares()
     # print(f"Compromised SWs at t={t}:")
