@@ -23,7 +23,7 @@ class Implementation:
     def set_vulnerabilities(self, vulnerabilities: list[int]):
         self.vuls = vulnerabilities
 
-    def get_info(self):
+    def __str__(self):
         return f'{self.type} with implementation {self.implementation_type}'
     
     def get_vulnerabilities(self):
@@ -60,8 +60,11 @@ class Software:
 
     def get_implementation_type(self):
         return self.implementation.implementation_type
+    
+    def get_vulnerabilities(self):
+        return self.implementation.get_vulnerabilities()
 
-    def get_info(self):
+    def __str__(self):
         return f'{self.implementation.type}_{self.id}'
     
     def update_implementation(self, implementation: Implementation):
@@ -109,17 +112,18 @@ class Network:
         self.num_app_versions = num_app_versions
         self.x_range = x_range
         self.y_range = y_range
-        self.os_versions = self.initialize_sw_versions("OS")
-        self.vulnerabilities = self.initialize_vulnerabilities(["OS", "APP1", "APP2"])
-        self.app1_versions = self.initialize_sw_versions("APP1", 1+num_app_versions)
-        self.app2_versions = self.initialize_sw_versions("APP2", 1+2*num_app_versions)
-        self.computers = self.initialize_computers()
+        self.os_versions = self.init_sw_versions("OS")
+        self.vulnerabilities = self.init_vulnerabilities(["OS", "APP1", "APP2"])
+        self.exploits = self.init_exploits(["OS", "APP1", "APP2"])
+        self.app1_versions = self.init_sw_versions("APP1", 1+num_app_versions)
+        self.app2_versions = self.init_sw_versions("APP2", 1+2*num_app_versions)
+        self.computers = self.init_computers()
         self.graph = self.generate_graph()
         self.update_cc()
         self.update_vc()
         self.update_ic()
 
-    def initialize_sw_versions(self, sw_type: str, start_version: int = 1):
+    def init_sw_versions(self, sw_type: str, start_version: int = 1):
         sw_versions = []
         for i in range(start_version, start_version + self.num_app_versions):
             # choose a random number of vulnerabilities for each implementation
@@ -132,13 +136,26 @@ class Network:
             sw_versions.append(Implementation(sw_type, i, 15, random.sample(vulnerabilities_range, random.randint(0, len(vulnerabilities_range)))))
         return sw_versions
     
-    def initialize_vulnerabilities(self, app_types: list[str]):
+    def init_vulnerabilities(self, app_types: list[str]):
         vulnerabilities = []
         for app_type in app_types:
             vulnerabilities.extend(f'{app_type}-VUL-{i}' for i in range(1, 6))
         return vulnerabilities
+    
+    def init_exploits(self, sws_types: list[str]) -> dict[str, list[int]]:
+        exploits = {}
+        for sw_type in sws_types:
+            if sw_type == "OS":
+                vulnerabilities_range = range(0, 5)
+            elif sw_type == "APP1":
+                vulnerabilities_range = range(5, 10)
+            elif sw_type == "APP2":
+                vulnerabilities_range = range(10, 15)
+            # Randomly select 2 vulnerabilities for each app type
+            exploits[sw_type] = random.sample(vulnerabilities_range, 4)
+        return exploits
 
-    def initialize_computers(self) -> list[Computer]:
+    def init_computers(self) -> list[Computer]:
         computers = []
         for i in range(self.num_computers):
             os = OperatingSystem(i, random.choice(self.os_versions))
@@ -254,6 +271,20 @@ class Network:
                 ic += 1
         self.ic = ic / self.num_computers
         return
+    
+    def cal_cswc(self):
+        # Calculate the compromised software coverage
+        csw = 0
+        sw_num = 0
+        for computer in self.computers:
+            sw_num += 1
+            if computer.os == 1:
+                csw += 1
+            for app in computer.apps:
+                sw_num += 1
+                if app.state == 1:
+                    csw += 1    
+        return csw / sw_num
     
     def get_compromised_softwares(self) -> list[Software]:
         # Get the compromised software
@@ -383,7 +414,13 @@ class Attacker:
                 for connected_sw in connected_sws:
                     # If the connected software is not compromised, add it to the knowledge
                     if connected_sw.attack_phase == -1 and connected_sw not in self.knowledge and connected_sw.state != 2:
-                        discovered_sws.add(connected_sw)
+                        # Check if there is a exploit matching the vulnerabilities of the connected software
+                        exploits = self.network.exploits[connected_sw.get_software_type()]
+                        vulnerabilities = connected_sw.get_vulnerabilities()
+                        for exploit in exploits:
+                            if vulnerabilities[exploit] == 1:
+                                discovered_sws.add(connected_sw)
+                                break
         self.knowledge.update(discovered_sws)
 
     def privilege_escalation_phase(self):
