@@ -2,7 +2,7 @@ from models import *
 import matplotlib.pyplot as plt
 
 # Create a Network
-net = Network(20, 3, [0, 50], [0,50])
+net = Network(100, 3, [0, 50], [0,50])
 
 t_range = [0,10]
 
@@ -10,7 +10,7 @@ net.print_diversity_configurations()
 net.print_st()
 net.print_spt()
 
-print(net.get_connected_apps())
+# print(net.get_connected_apps())
 
 print(f"VC: {net.vc}")
 print(f"CC: {net.cc}")
@@ -18,15 +18,15 @@ print(f"IC: {net.ic}")
 
 # net.plot()
 
-print("Invulnerable SWs:")
-invulnerable_sws = net.get_invulnerable_softwares()
-for sw in invulnerable_sws:
-    print(sw)
+# print("Invulnerable SWs:")
+# invulnerable_sws = net.get_invulnerable_softwares()
+# for sw in invulnerable_sws:
+#     print(sw)
 
-print("Compromised SWs before attack:")
-compromised_sws = net.get_compromised_softwares()
-for sw in compromised_sws:
-    print(sw)
+# print("Compromised SWs before attack:")
+# compromised_sws = net.get_compromised_softwares()
+# for sw in compromised_sws:
+#     print(sw)
 
 attacker = Attacker(net)
 defender = Defender(net, "Static", "Random")

@@ -42,7 +42,7 @@ class Software:
         # Calculate the state based on the vulnerabilities
         if 1 in self.implementation.vuls:
             # If there are vulnerabilities, at least vulnerable, also have 1/4 chance to be compromised
-            return 1 if random.random() < 0.25 else 0
+            return 1 if random.random() < 0.01 else 0
         return 2
 
     def set_state_based_on_vulnerabilities(self):
@@ -133,7 +133,7 @@ class Network:
                 vulnerabilities_range = range(5, 10)
             elif sw_type == "APP2":
                 vulnerabilities_range = range(10, 15)
-            sw_versions.append(Implementation(sw_type, i, 15, random.sample(vulnerabilities_range, random.randint(0, len(vulnerabilities_range)))))
+            sw_versions.append(Implementation(sw_type, i, 15, random.sample(vulnerabilities_range, random.randint(1, len(vulnerabilities_range)))))
         return sw_versions
     
     def init_vulnerabilities(self, app_types: list[str]):
@@ -152,7 +152,7 @@ class Network:
             elif sw_type == "APP2":
                 vulnerabilities_range = range(10, 15)
             # Randomly select 2 vulnerabilities for each app type
-            exploits[sw_type] = random.sample(vulnerabilities_range, 4)
+            exploits[sw_type] = random.sample(vulnerabilities_range, 2)
         return exploits
 
     def init_computers(self) -> list[Computer]:
@@ -178,12 +178,12 @@ class Network:
                     graph1.add_node(app)
                 elif app.get_software_type() == 'APP2':
                     graph2.add_node(app)
-        # Connect nodes with a probability of 0.8 in the same app graph
+        # Connect nodes with a probability of 0.4 in the same app graph
         for application1, application2 in itertools.combinations(graph1.nodes(), 2):
-            if random.random() < 0.8:
+            if random.random() < 0.4:
                 graph1.add_edge(application1, application2)
         for application1, application2 in itertools.combinations(graph2.nodes(), 2):
-            if random.random() < 0.8:
+            if random.random() < 0.4:
                 graph2.add_edge(application1, application2)
         graphs['APP1'] = graph1
         graphs['APP2'] = graph2
