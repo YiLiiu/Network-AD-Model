@@ -32,11 +32,11 @@ class Computer:
         return
 
 class Network:
-    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int, x_range, y_range):
+    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int):
         self.num_computers = num_computers
         self.num_app_versions = num_app_versions
-        self.x_range = x_range
-        self.y_range = y_range
+        self.x_range = [0, 100]
+        self.y_range = [0, 100]
         self.os_versions = self.init_sw_versions("OS")
         self.vulnerabilities = self.init_vulnerabilities(["OS", "APP1", "APP2"])
         self.exploits = self.init_exploits(["OS", "APP1", "APP2"])

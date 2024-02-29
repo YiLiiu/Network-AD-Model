@@ -1,16 +1,17 @@
 from .models import Network, Attacker, Defender
 
 class Simulation:
-    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int, x_range, y_range):
-        self.network = Network(num_computers, num_app_versions, compromised_sw, x_range, y_range)
+    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int, d_strategy: str, d_algorithm: str):
+        self.network = Network(num_computers, num_app_versions, compromised_sw)
         self.attacker = Attacker(self.network)
-        self.defender = Defender(self.network, "Static", "Random")
+        self.defender = Defender(self.network, d_strategy, d_algorithm)
         self.tau_index = 0
         self.tts_list = []
 
     def run(self, time_steps: int, taus: list[float]) -> tuple[list[float], list[int]]:
         for t in range(time_steps):
             self.attacker.attack()
+            self.defender.defend()
             print(f"At time {t}, {self.net_info()}")
             if self.tau_index == len(taus):
                 break
