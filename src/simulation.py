@@ -1,8 +1,8 @@
 from .models import Network, Attacker, Defender
 
 class Simulation:
-    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int, d_strategy: str, d_algorithm: str):
-        self.network = Network(num_computers, num_app_versions, compromised_sw)
+    def __init__(self, network: Network, d_strategy: str, d_algorithm: str):
+        self.network = network
         self.attacker = Attacker(self.network)
         self.defender = Defender(self.network, d_strategy, d_algorithm)
         self.tau_index = 0

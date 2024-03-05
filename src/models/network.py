@@ -4,6 +4,7 @@ import networkx as nx
 
 from .software import OperatingSystem, Application, Implementation, Software
 
+random.seed(12)
 
 class Computer:
     def __init__(self, id: int, os: OperatingSystem, apps: list[Application], x_position, y_position):
@@ -32,9 +33,10 @@ class Computer:
         return
 
 class Network:
-    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int):
+    def __init__(self, num_computers: int, num_app_versions: int, compromised_sw: int, num_exploits: int = 2):
         self.num_computers = num_computers
         self.num_app_versions = num_app_versions
+        self.num_exploits = num_exploits
         self.x_range = [0, 100]
         self.y_range = [0, 100]
         self.os_versions = self.init_sw_versions("OS")
@@ -78,7 +80,7 @@ class Network:
             elif sw_type == "APP2":
                 vulnerabilities_range = range(10, 15)
             # Randomly select 2 vulnerabilities for each app type
-            exploits[sw_type] = random.sample(vulnerabilities_range, 2)
+            exploits[sw_type] = random.sample(vulnerabilities_range, self.num_exploits)
         return exploits
 
     def init_computers(self) -> list[Computer]:
